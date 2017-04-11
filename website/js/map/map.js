@@ -1713,6 +1713,29 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 		topKItems: function(k, offset, cellIds, cb) {
 			map.dagExpander.expandCellItems(cellIds, function() {
 				
+// 				var cellIterators = [];
+// 				for(let cellId of cellIds) {
+// 					var cellNode = state.dag.cell(cellId);
+// 					cellIterators.push(cellNode.items.begin());
+// 				}
+// 				
+// 				//now skip the first k items
+// 				for(let skipping=true; skipping;) {
+// 					let skippedOne = false;
+// 					for(let cellIt of cellIterators) {
+// 						let x = cellIt.next();
+// 						if (!x.done) {
+// 							
+// 						}
+// 					}
+// 					
+// 					
+// 				}
+// 				
+// 				var totalNeed = k+offset;
+				
+				
+				
 				//iterators would be nice
 				var tmp = tools.SimpleSet();
 				for(var i in cellIds) {
