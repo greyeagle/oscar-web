@@ -7,11 +7,13 @@ define(["jquery"], function ($) {
          */
 		SimpleHash: function () {
 			return {
+				m_oldData: {},
 				m_data: new Map(),
 				"Symbol.iterator": function() {
 					return this.m_data["Symbol.iterator"]();
 				},
 				values: function() {
+// 					return this.m_oldData;
 					return this.m_data.keys();
 				},
 				begin: function() {
@@ -21,12 +23,14 @@ define(["jquery"], function ($) {
 					return this.m_data.size;
 				},
 				insert: function(key, value) {
-					this.m_data.set(key + "", value);
+					this.set(key, value);
 				},
 				set: function(key, value) {
+					m_oldData[key] = value;
 					this.m_data.set(key + "", value);
 				},
 				count: function(key) {
+					console.assert(this.m_data.has(key + "") === (this.m_oldData[key] !== undefined));
 					return this.m_data.has(key + "");
 				},
 				at: function(key) {
@@ -36,21 +40,24 @@ define(["jquery"], function ($) {
 					this.m_data.forEach(cb);
 				},
 				erase: function(key) {
+					delete this.m_oldData[key];
 					this.m_data.delete(key + "");
 				},
 				clear: function() {
+					this.m_oldData = {};
 					this.m_data .clear();
 				}
 			}
 		},
 		SimpleSet: function() {
 			return {
+				m_oldData: {},
 				m_data: new Set(),
 				"Symbol.iterator": function() {
 					return this.m_data["Symbol.iterator"]();
 				},
 				values: function () {
-					return this.m_data;
+					return this.m_oldDdata;
 				},
 				begin: function() {
 					this["Symbol.iterator"]();
@@ -59,15 +66,19 @@ define(["jquery"], function ($) {
 					return this.size;
 				},
 				count: function (key) {
+					console.assert(this.m_data.has(key + "") === (this.m_oldData[key] !== undefined));
 					return this.m_data.has(key + "");
 				},
 				erase: function (key) {
+					delete this.m_oldData[key];
 					this.m_data.delete(key + "");
 				},
 				clear: function () {
+					this.oldData = {};
 					this.m_data.clear();
 				},
 				insert: function(key) {
+					this.m_oldData[key] = key;
 					this.m_data.add(key + "");
 				},
 				insertArray: function(arrayOfKeys) {
