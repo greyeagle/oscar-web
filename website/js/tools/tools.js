@@ -6,18 +6,11 @@ define(["jquery"], function ($) {
          *
          */
 		SimpleHash: function () {
-			return {
+			var sh = {
 				m_oldData: {},
 				m_data: new Map(),
-				"Symbol.iterator": function() {
-					return this.m_data["Symbol.iterator"]();
-				},
 				values: function() {
-// 					return this.m_oldData;
 					return this.m_data.keys();
-				},
-				begin: function() {
-					this["Symbol.iterator"]();
 				},
 				size: function() {
 					return this.m_data.size;
@@ -26,7 +19,7 @@ define(["jquery"], function ($) {
 					this.set(key, value);
 				},
 				set: function(key, value) {
-					m_oldData[key] = value;
+					this.m_oldData[key] = value;
 					this.m_data.set(key + "", value);
 				},
 				count: function(key) {
@@ -34,12 +27,14 @@ define(["jquery"], function ($) {
 					return this.m_data.has(key + "");
 				},
 				at: function(key) {
+					this.count(key); //debugging
 					return this.m_data.get(key + "");
 				},
 				each: function(cb) {
 					this.m_data.forEach(cb);
 				},
 				erase: function(key) {
+					this.count(key); //debugging
 					delete this.m_oldData[key];
 					this.m_data.delete(key + "");
 				},
@@ -47,20 +42,16 @@ define(["jquery"], function ($) {
 					this.m_oldData = {};
 					this.m_data .clear();
 				}
-			}
+			};
+// 			sh[Symbol.iterator] = sh.m_data[Symbol.iterator];
+			return sh;
 		},
 		SimpleSet: function() {
-			return {
+			var ss = {
 				m_oldData: {},
 				m_data: new Set(),
-				"Symbol.iterator": function() {
-					return this.m_data["Symbol.iterator"]();
-				},
 				values: function () {
-					return this.m_oldDdata;
-				},
-				begin: function() {
-					this["Symbol.iterator"]();
+					return this.m_data;
 				},
 				size: function () {
 					return this.size;
@@ -70,6 +61,7 @@ define(["jquery"], function ($) {
 					return this.m_data.has(key + "");
 				},
 				erase: function (key) {
+					this.count(key); //debugging
 					delete this.m_oldData[key];
 					this.m_data.delete(key + "");
 				},
@@ -82,8 +74,8 @@ define(["jquery"], function ($) {
 					this.m_data.add(key + "");
 				},
 				insertArray: function(arrayOfKeys) {
-					for(var i in arrayOfKeys) {
-						this.insert(arrayOfKeys[i]);
+					for(let x of arrayOfKeys) {
+						this.insert(x);
 					}
 				},
 				each: function(cb) {
@@ -91,8 +83,8 @@ define(["jquery"], function ($) {
 				},
 				toArray: function() {
 					var tmp = [];
-					for(var i in this.m_data) {
-						tmp.push(i);
+					for(let x of this.m_data) {
+						tmp.push(x);
 					}
 					return tmp;
 				},
@@ -105,9 +97,11 @@ define(["jquery"], function ($) {
 							return false;
 						}
 					}
-				return true;
+					return true;
 				}
-			}
+			};
+// 			ss[Symbol.iterator] = ss.m_data[Symbol.iterator];
+			return ss;
 		},
 		
 		getMissing: function(setA, setB, missingInA, missingInB) {
@@ -141,8 +135,8 @@ define(["jquery"], function ($) {
 		
 		toIntArray: function(strArray) {
 			var tmp = [];
-			for(var i in strArray) {
-				tmp.push(parseInt("" + strArray[i]));
+			for(let x of strArray) {
+				tmp.push(parseInt("" + x));
 			}
 			return tmp;
 		},
