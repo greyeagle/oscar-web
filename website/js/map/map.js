@@ -1150,6 +1150,23 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 		return handler;
 	};
 	
+	var CellMarkerHandler = function(target, map) {
+		var handler = MarkerHandler(target, map);
+		handler.m_forwardedSignals = {"click" : ["click"], "mouseover": ["mouseover"], "mouseout": ["mouseout"]};
+		handler._fetchLayer = function(cb, cellId, count) {
+			console.assert(count !== undefined, count);
+			console.assert(state.dag.hasCell(cellId));
+			var cellNode = state.dag.cell(cellId);
+			var latlng = [(cellNode.bbox[0][0]+cellNode.bbox[1][0])/2, (cellNode.bbox[0][1]+cellNode.bbox[1][1])/2];
+			var marker = L.marker(latlng);
+			marker.count = count;
+			marker.nodeId = cellId;
+			marker.bbox = cellNode.bbox;
+			cb(marker);
+		};
+		return handler;
+	};
+	
 	var RegionMarkerHandler = function(target, map) {
 		var handler = MarkerHandler(target, map);
 		handler.m_forwardedSignals = {"click" : ["click"], "mouseover": ["mouseover"], "mouseout": ["mouseout"]};
@@ -1168,7 +1185,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 				marker.bbox = item.bbox();
 				marker.count = count;
 				//needed by prototype.js and cluster-marker.js
-				marker.rid = itemId;
+				marker.nodeId = itemId;
 				cb(marker);
 			}, tools.defErrorCB);
 		};
@@ -1247,15 +1264,15 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 	};
 
 	L.MarkerCluster.prototype["getChildClustersRegionIds"] = function () {
-		var rids = [];
+		var nids = [];
 		var allChildClusters = this.getAllChildMarkers();
 
 		for (let child of allChildClusters) {
-			if (child.rid !== undefined) {
-				rids.push(child.rid);
+			if (child.nodeId !== undefined) {
+				nids.push(child.nodeId);
 			}
 		}
-		return rids;
+		return nids;
 	};
 
 	var WORLD_TAB_ID = 0xFFFFFFFF;
@@ -1269,6 +1286,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 		ItemShapeHandler: ItemShapeHandler,
 		ItemMarkerHandler: ItemMarkerHandler,
 		RegionMarkerHandler: RegionMarkerHandler,
+		CellMarkerHandler: CellMarkerHandler,
 
 		resultListTabs: undefined,
 		inspectionItemListHandler: undefined,
@@ -1287,6 +1305,8 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 		inspectionItemMarkers: undefined,
 		clusterMarkerGroup: undefined,
 		clusterMarkers: undefined,
+		cellClusterMarkerGroup: undefined,
+		cellClusterMarkers: undefined,
 		
 		//dag handling
 		dagExpander: dagexp.dagExpander(),
@@ -1332,6 +1352,11 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
             map.clusterMarkerGroup = L.markerClusterGroup(clusterMarkerOptions);
 			state.map.addLayer(map.clusterMarkerGroup);
 			map.clusterMarkers = map.RegionMarkerHandler(map.clusterMarkerGroup);
+			
+			//init the cell cluster markers
+			map.cellClusterMarkerGroup = L.markerClusterGroup(clusterMarkerOptions);
+			state.map.addLayer(map.cellClusterMarkerGroup);
+			map.cellClusterMarkers = map.CellMarkerHandler(map.cellClusterMarkerGroup);
 			
 			$("#inspect-remove-all").on("click", map.onInspectRemoveAllClicked);
 		},
@@ -1407,6 +1432,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 			map.itemMarkers.clear();
 			map.inspectionItemMarkers.clear();
 			map.clusterMarkers.clear();
+			map.cellClusterMarkers.clear();
 
 			map.resultListTabs.clear();
 			map.inspectionItemListHandler.clear();
@@ -1888,6 +1914,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 		//this is a recursive function, you have to clear the displayState of the dag before calling
 		//childrenToFetch should be of type tools.SimpleSet() and will contain the nodes that should be expanded
 		//cellsToFetch will contain the nodes whose cells are needed
+		//cellDataToFetch is of type tools.SimpleSet and will contain the nodes whose cell data needs to be fetched
 		updateDag: function(node, childrenToFetch, cellsToFetch) {
 			if (!node) {
 				return;
@@ -1964,6 +1991,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 			var cbh;
 			var childrenToFetch = tools.SimpleSet();
 			var cellsToFetch = tools.SimpleSet();
+			var cellDataToFetch = tools.SimpleSet();
 			
 			state.dag.clearDisplayState();
 			
@@ -1971,9 +1999,8 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 			
 			//get the children and the cells of regions that expand their cells
 			if (childrenToFetch.size() || cellsToFetch.size()) {
-				cbh = tools.AsyncCallBackHandler(2, function() {
-					map.mapViewChanged();
-				});
+				//we use 3 here since there might be a cellData update aswell
+				cbh = tools.AsyncCallBackHandler(3, function() { map.mapViewChanged(); });
 				var myWrapper = function(regionsToExpand, regionCellsToExpand, cbh) {
 					if (regionsToExpand.length) {
 						map.dagExpander.expandRegionChildren(regionsToExpand, function() { cbh.inc();});
@@ -2031,7 +2058,9 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 						//no cell is marked for this region this either means that all 
 						//cells were used by other regions or the cells are too small to be displayed
 						//if the former is the case then everything is fine
-						//but in the later case we should add a cluster marker for this region
+						//but in the later case we should? add a cluster marker for this region
+						//We should only add a cluster of the region if all cells are too small
+						//If at least one cell is covered by another region then we should add the cells with cluster markers to the map
 						ok = !node.cells.size();
 						for(let cellId of node.cells.builtinset()) {
 							var cellNode = state.dag.cell(cellId);
@@ -2065,10 +2094,24 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 				}
 			}, dag.NodeTypes.Region);
 			
+			
+			if (cellDataToFetch.size()) {
+				if (cbh !== undefined) {
+					 map.dagExpander.retrieveCellData(cellDataToFetch.toArray(), cbh);
+				}
+				else {
+					map.dagExpander.retrieveCellData(cellDataToFetch.toArray(), function() { map.mapViewChanged(); });
+				}
+				
+			}
+			else if (cbh !== undefined) {
+				cbh.inc();
+			}
+			
 			//cells now hold the correct display state (either InResultsTab or HasRegionClusterMarker)
 			//regions now hold the correct display state as well
 		},
-		_assignClusterMarkers: function(wantClusterMarkers) {
+		_assignClusterMarkers: function(wantClusterMarkers, wantCellClusterMarkers) {
 			var removedClusterMarkers = tools.SimpleSet();
 			var missingClusterMarkers = tools.SimpleSet();
 			tools.getMissing(wantClusterMarkers, map.clusterMarkers.layers(), removedClusterMarkers, missingClusterMarkers);
@@ -2078,6 +2121,17 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 			});
 			missingClusterMarkers.each(function(key) {
 				map.clusterMarkers.add(key, state.dag.region(key).count);
+			});
+			
+			removedClusterMarkers.clear();
+			missingClusterMarkers.clear();
+			tools.getMissing(wantCellClusterMarkers, map.cellClusterMarkers.layers(), removedClusterMarkers, missingClusterMarkers);
+		
+			removedClusterMarkers.each(function(key) {
+				map.cellClusterMarkers.remove(key);
+			});
+			missingClusterMarkers.each(function(key) {
+				map.cellClusterMarkers.add(key, 1);
 			});
 		},
 		//cells are tools.SimpleSet
@@ -2218,6 +2272,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 
 			var wantTabListRegions = tools.SimpleSet();
 			var wantClusterMarkers = tools.SimpleSet();
+			var wantCellClusterMarkers = tools.SimpleSet();
 			state.dag.each(function(node) {
 				if (node.displayState & dag.DisplayStates.HasRegionClusterMarker) {
 					wantClusterMarkers.insert(node.id);
@@ -2226,10 +2281,15 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 					wantTabListRegions.insert(node.id);
 				}
 			}, dag.NodeTypes.Region);
+			state.dag.each(function(node) {
+				if (node.displayState & dag.DisplayStates.HasCellClusterMarker) {
+					wantCellClusterMarkers.insert(cellId);
+				}
+			}, dag.NodeTypes.Cell);
 			
 			timers.clusterUpdate.start();
 			{
-				map._assignClusterMarkers(wantClusterMarkers);
+				map._assignClusterMarkers(wantClusterMarkers, wantCellClusterMarkers);
 			}
 			timers.clusterUpdate.stop();
 			
