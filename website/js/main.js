@@ -272,6 +272,22 @@ requirejs(["leaflet", "jquery", "mustache", "jqueryui", "sidebar", "mustacheLoad
                     $('#spatialquery_radius_group').addClass('hidden');
                 }
             });
+			$("#bbox_overlap_spinner").val(config.clusters.bboxOverlap*1000).change(function() {
+				var me = $(this);
+				var val = parseInt(me.val()) / 1000;
+				if (config.clusters.bboxOverlap !== val && val > 0) {
+					config.clusters.bboxOverlap = val;
+					map.viewChanged();
+				}
+			});
+			$("#shape_overlap_spinner").val(config.clusters.shapeOverlap*1000).change(function() {
+				var me = $(this);
+				var val = parseInt(me.val()) / 1000;
+				if (config.clusters.shapeOverlap !== val && val > 0) {
+					config.clusters.shapeOverlap = val;
+					map.viewChanged();
+				}
+			});
 			
 
 			
