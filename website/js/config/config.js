@@ -146,6 +146,7 @@ define([], function() {
 		clusters: {
 			bboxOverlap: 0.4, // threshold for overlap of a bbox with viewport
 			shapeOverlap: 0.1 // threshold for overlap of a bbox with viewport if the shape is within the viewport
+			maxZoom: 18 //maximum zoom level where clustering is still active
 		},
 		//map options
 		map : {
