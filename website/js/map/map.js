@@ -1203,7 +1203,10 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 	};
 	
 	var clusterMarkerOptions = {
-		maxClusterRadius: 90, //A cluster will cover at most this many pixels from its center
+		maxClusterRadius: function() {
+			//A cluster will cover at most this many pixels from its center
+			return config.clusters.maxReclusterRadius;
+		},
 		iconCreateFunction: function (cluster) {
 			/* https://github.com/Leaflet/Leaflet.markercluster/issues/351
 				required to use the preclustering by the server */

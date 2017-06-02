@@ -144,8 +144,9 @@ define([], function() {
             }
         },
 		clusters: {
-			bboxOverlap: 0.4, // threshold for overlap of a bbox with viewport
-			shapeOverlap: 0.1 // threshold for overlap of a bbox with viewport if the shape is within the viewport
+			bboxOverlap: 0.1, // threshold for overlap of a bbox with viewport
+			shapeOverlap: 0.1, // threshold for overlap of a bbox with viewport if the shape is within the viewport
+			maxReclusterRadius: 1,
 			maxZoom: 18 //maximum zoom level where clustering is still active
 		},
 		//map options
@@ -167,7 +168,7 @@ define([], function() {
 			},
 			clustering : {
 				//minimum number of items in root node to have a clustered view
-				threshold: 100
+				threshold: 1
 			}
 		},
 		maxBufferedItems: 350, // buffered locations

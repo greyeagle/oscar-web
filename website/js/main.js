@@ -272,7 +272,7 @@ requirejs(["leaflet", "jquery", "mustache", "jqueryui", "sidebar", "mustacheLoad
                     $('#spatialquery_radius_group').addClass('hidden');
                 }
             });
-			$("#bbox_overlap_spinner").val(config.clusters.bboxOverlap*1000).change(function() {
+			$("#bbox_overlap_spinner").val(config.clusters.bboxOverlap*1000).on("keyup change mousewheel", function(evt) {
 				var me = $(this);
 				var val = parseInt(me.val()) / 1000;
 				if (config.clusters.bboxOverlap !== val && val > 0) {
@@ -280,7 +280,7 @@ requirejs(["leaflet", "jquery", "mustache", "jqueryui", "sidebar", "mustacheLoad
 					map.viewChanged();
 				}
 			});
-			$("#shape_overlap_spinner").val(config.clusters.shapeOverlap*1000).change(function() {
+			$("#shape_overlap_spinner").val(config.clusters.shapeOverlap*1000).on("keyup change mousewheel", function() {
 				var me = $(this);
 				var val = parseInt(me.val()) / 1000;
 				if (config.clusters.shapeOverlap !== val && val > 0) {
@@ -288,7 +288,14 @@ requirejs(["leaflet", "jquery", "mustache", "jqueryui", "sidebar", "mustacheLoad
 					map.viewChanged();
 				}
 			});
-			
+			$("#recluster_radius_spinner").val(config.clusters.maxReclusterRadius).change(function() {
+				var me = $(this);
+				var val = parseInt(me.val());
+				if (config.clusters.maxReclusterRadius !== val) {
+					config.clusters.maxReclusterRadius = val;
+					map.viewChanged();
+				}
+			});
 
 			
 			$("#result_download_select").change(search.updateDownloadLink);
