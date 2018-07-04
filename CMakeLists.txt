@@ -32,6 +32,7 @@ set(OSCAR_WEB_SOURCES_CPP
 	server/CQRItems.cpp
 	server/oscarweb.cpp
 	server/MainHandler.cpp
+	server/KVClustering.cpp
 )
 
 set(MY_C_FLAGS "-std=c99 -fopenmp")
