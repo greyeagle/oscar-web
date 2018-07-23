@@ -37,3 +37,4 @@ SET(OSCAR_WEB_LINK_LIBS
 
 add_executable(${PROJECT_NAME} ${OSCAR_WEB_SOURCES_CPP})
 target_link_libraries(${PROJECT_NAME} ${OSCAR_WEB_LINK_LIBS})
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
