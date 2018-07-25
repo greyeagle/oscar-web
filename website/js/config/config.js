@@ -134,9 +134,9 @@ define([], function() {
         },
         functionality: {
             shapes: {
-                "highlightListItemOnClick": {
-                    "items": true,
-                    "relatives": false
+                highlightListItemOnClick: {
+                    items: true,
+                    relatives: false
                 }
             }
         },
