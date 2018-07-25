@@ -1912,7 +1912,7 @@ function (require, state, $, config, oscar, flickr, tools, tree) {
 					
 					var childNode = state.dag.region(childId);
 					var myOverlap = tools.percentOfOverlap(state.map, childNode.bbox);
-					if (myOverlap >= 0 && state.map.getZoom() === state.map.getMaxZoom()) {
+					if (myOverlap >= 0 && state.map.getZoom() >== map.cfg.clustering.maxZoomLevel) {
 						myOverlap = 100;
 					}
 
