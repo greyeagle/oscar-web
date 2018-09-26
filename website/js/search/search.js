@@ -69,7 +69,8 @@ define(["state", "tools", "conf", "oscar", "map", "fuzzysort", "kv-clustering"],
 
             //query has changed, ddos the server!
             var myQuery = kvClustering.addRefinementToQuery($("#search_text").val());
-            
+			kvClustering.closeClustering($("#search_text").val());
+
             state.queries.lastQuery = myQuery + "";//make sure state hold a copy
 
             var ohf = (parseInt($('#ohf_spinner').val()) / 100.0);
