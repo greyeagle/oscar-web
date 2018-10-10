@@ -89,11 +89,9 @@ namespace oscar_web {
 
                 sortMap(keyValueItemMap, keyValueItemVec, debugStr);
 
-                out << "{\"clustering\":[";
-
                 writeParentsWithNoIntersection(out, keyValueItemMap, keyValueItemVec,  mode, store, numberOfRefinements, debugStr);
 
-                out << "]";
+
             } else {
                 std::vector<uint32_t> exceptions = parseJsonArray<uint32_t>(exceptionsString, parsingCorrect);
 
@@ -105,11 +103,8 @@ namespace oscar_web {
 
                 sortMap(keyItemMap, keyItemVec, debugStr);
 
-                out << "{\"clustering\":[";
-
                 writeParentsWithNoIntersection(out, keyItemMap, keyItemVec, mode, store, numberOfRefinements, debugStr);
 
-                out << "]";
             }
 
         } else {
@@ -145,13 +140,8 @@ namespace oscar_web {
 
             sortMap(parentItemMap, parentItemVec, debugStr);
 
-            //begin printing
-
-            out << "{\"clustering\":[";
-
             writeParentsWithNoIntersection(out, parentItemMap, parentItemVec, mode, store, numberOfRefinements, debugStr);
 
-            out << "]";
         }
 
         if (debug) {
@@ -185,11 +175,11 @@ namespace oscar_web {
         const auto &store = m_dataPtr->completer->store();
         for (sserialize::CellQueryResult::const_iterator it(cqr.begin()), end(cqr.end()); it != end; ++it) {
             for (const uint32_t& x : it.idx()) {
-                const auto& item = store.at(x);
+                const auto& item = store.kvBaseItem(x);
                 //iterate over all item keys
                 for (uint32_t i = 0; i < item.size(); ++i) {
                     //add key and item to key to keyItemMap
-                    insertKey(keyItemMap, item, i, exceptions);
+                    insertKey(keyItemMap, item, i, exceptions, x);
                 }
             }
         }
@@ -228,6 +218,8 @@ namespace oscar_web {
                                                       const liboscar::Static::OsmKeyValueObjectStore &store,
                                                       const uint32_t &numberOfRefinements,
                                                       std::stringstream &debugStr) {
+
+
         //derive startParents BA-Kopf Page 18
         sserialize::TimeMeasurer fptm;
         fptm.begin();
@@ -243,13 +235,9 @@ namespace oscar_web {
                 maxNumberOfIntersections = mode == 3 ? 0 : ((*itI).second + (*itJ).second) / 200;
                 if (!hasIntersection(setI, setJ, maxNumberOfIntersections)) {
                     // no intersection or required amount
-                    // add both parents to results and print them
+                    // add both parents to results
                     result.emplace_back((*itJ).first,(*itJ).second);
                     result.emplace_back((*itI).first,(*itI).second);
-
-                    printResult((*itJ).first, (*itJ).second, out, mode, store);
-                    out << ",";
-                    printResult((*itI).first, (*itI).second, out, mode, store);
 
                     //end the algorithm
                     startParentsFound = true;
@@ -267,7 +255,7 @@ namespace oscar_web {
         sserialize::TimeMeasurer nptm;
         nptm.begin();
         if (startParentsFound) {
-            for (auto itK = itI + 1; itK < parentItemVec.end() && result.size() <= numberOfRefinements; ++itK) {
+            for (auto itK = itI + 1; itK < parentItemVec.end() && result.size() < numberOfRefinements+1; ++itK) {
                 bool discarded = false;
                 for (auto& parentPair : result) {
                     maxNumberOfIntersections =
@@ -278,16 +266,38 @@ namespace oscar_web {
                     }
                 }
                 if (!discarded) {
-                    //parent does not intersect with previous found parents; add to results and print
+                    //parent does not intersect with previous found parents; add to results
                     result.emplace_back(*itK);
-                    out << ",";
-                    printResult((*itK).first, (*itK).second, out, mode, store);
                 }
             }
         }
+
         nptm.end();
 
         debugStr << ",\"timeToFindOtherParents\":" << nptm.elapsedMilliSeconds();
+
+        //print results
+
+        out << "{\"clustering\":[";
+        auto separator = "";
+
+        bool hasMore = false;
+        uint32_t count = 0;
+
+        for(auto& resultPair: result){
+            if(count < numberOfRefinements){
+                out << separator;
+                printResult(resultPair.first, resultPair.second, out, mode, store);
+                separator = ",";
+            } else {
+                hasMore = true;
+            }
+            ++count;
+        }
+
+        out << "]";
+
+        out << ",\"hasMore\":" << std::boolalpha << hasMore;
 
     }
 
@@ -351,17 +361,17 @@ namespace oscar_web {
     }
 
     void KVClustering::insertKey(std::unordered_map<std::uint32_t, std::vector<uint32_t>> &keyItemMap,
-                                 const liboscar::Static::OsmKeyValueObjectStoreItem &item, const uint32_t &i,
-                                 const std::vector<uint32_t>& exceptions) {
+                                 const liboscar::Static::OsmKeyValueObjectStore::KVItemBase &item, const uint32_t &i,
+                                 const std::vector<uint32_t>& exceptions, const std::uint32_t itemId) {
         if(std::find(exceptions.begin(), exceptions.end(), item.keyId(i)) == exceptions.end())
-        keyItemMap[item.keyId(i)].emplace_back(item.id());
+        keyItemMap[item.keyId(i)].emplace_back(itemId);
     }
 
     void KVClustering::insertKey(std::unordered_map<std::pair<std::uint32_t, std::uint32_t>, std::vector<uint32_t>> &keyValueItemMap,
-                                const liboscar::Static::OsmKeyValueObjectStoreItem &item, const uint32_t &i,
-                                const std::vector<std::pair<std::uint32_t , std::uint32_t >>& exceptions) {
+                                const liboscar::Static::OsmKeyValueObjectStore::KVItemBase &item, const uint32_t &i,
+                                const std::vector<std::pair<std::uint32_t , std::uint32_t >>& exceptions, const std::uint32_t itemId) {
         const std::pair<std::uint32_t , std::uint32_t >& keyValuePair = std::make_pair(item.keyId(i), item.valueId(i));
         if(std::find(exceptions.begin(), exceptions.end(), keyValuePair) == exceptions.end())
-            keyValueItemMap[keyValuePair].emplace_back(item.id());
+            keyValueItemMap[keyValuePair].emplace_back(itemId);
     }
 }//end namespace oscar_we

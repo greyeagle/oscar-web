@@ -273,10 +273,10 @@
 									<a class="nav-link active" id="kv-tab" data-toggle="tab" href="#kv-content" role="tab" aria-controls="kv-content" aria-selected="true">Key-Value</a>
 								</li>
 								<li class="nav-item refinement-type">
-									<a class="nav-link" id="k-tab" data-toggle="tab" href="#k-content" role="tab" aria-controls="k-content" aria-selected="false">Key</a>
+									<a class="nav-link" id="p-tab" data-toggle="tab" href="#p-content" role="tab" aria-controls="p-content" aria-selected="false">Parent</a>
 								</li>
 								<li class="nav-item refinement-type">
-									<a class="nav-link" id="p-tab" data-toggle="tab" href="#p-content" role="tab" aria-controls="p-content" aria-selected="false">Parent</a>
+									<a class="nav-link" id="k-tab" data-toggle="tab" href="#k-content" role="tab" aria-controls="k-content" aria-selected="false">Key</a>
 								</li>
 							</ul>
 							<div class="tab-content" id="refinementTabContent">
@@ -288,6 +288,7 @@
 									<ul class="list-group"  id="pClustering-list">
 										<li>No refinements for this query.</li>
 									</ul>
+									<button id="pShowMore" class="btn" hidden>Load More</button>
 									<div id="pDebugInfo"></div>
 								</div>
 								<div class="tab-pane fade" id="k-content" role="tabpanel" aria-labelledby="k-tab">
@@ -303,6 +304,7 @@
 									<ul style="list-style-type: none; margin-left: -40px" id="kException-list">
 
 									</ul>
+									<button id="kShowMore" class="btn" hidden>Load More</button>
 									<div id="kDebugInfo"></div>
 								</div>
 								<div class="tab-pane fade show active" id="kv-content" role="tabpanel" aria-labelledby="kv-tab">
@@ -317,6 +319,7 @@
 									<ul style="list-style-type: none; margin-left: -40px" id="kvException-list">
 
 									</ul>
+									<button id="kvShowMore" class="btn" hidden>Load More</button>
 									<div id="kvDebugInfo"></div>
 								</div>
 							</div>
