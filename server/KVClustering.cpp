@@ -25,6 +25,7 @@ namespace oscar_web {
         ttm.begin();
 
         const auto &store = m_dataPtr->completer->store();
+        m_store = m_dataPtr->completer->store();
         const auto &gh = store.geoHierarchy();
 
         response().set_content_header("text/json");
@@ -73,6 +74,8 @@ namespace oscar_web {
 
         std::vector<std::pair<sserialize::SizeType, sserialize::SizeType >> keyExceptionRanges;
 
+        auto subSet = sg.subSet(cqr, false, 1);
+
         if (mode < 2) {
 
             std::vector<std::string> prefixKeyExceptions = parseJsonArray<std::string>(keyExceptions, parsingCorrect);
@@ -86,8 +89,6 @@ namespace oscar_web {
             }
 
             if (mode == 0) {
-
-
 
                 std::vector<std::pair<uint32_t , uint32_t >> exceptions;
 
@@ -105,7 +106,7 @@ namespace oscar_web {
 
                 sortMap(keyValueItemMap, keyValueItemVec, debugStr);
 
-                writeParentsWithNoIntersection(out, keyValueItemMap, keyValueItemVec,  mode, store, numberOfRefinements, debugStr);
+                writeParentsWithNoIntersection(out, keyValueItemMap, keyValueItemVec,  mode, store, numberOfRefinements, debugStr, subSet);
 
 
             } else {
@@ -119,7 +120,7 @@ namespace oscar_web {
 
                 sortMap(keyItemMap, keyItemVec, debugStr);
 
-                writeParentsWithNoIntersection(out, keyItemMap, keyItemVec, mode, store, numberOfRefinements, debugStr);
+                writeParentsWithNoIntersection(out, keyItemMap, keyItemVec, mode, store, numberOfRefinements, debugStr, subSet);
 
             }
 
@@ -129,6 +130,11 @@ namespace oscar_web {
             std::unordered_map<std::uint32_t, std::vector<uint32_t>> parentItemMap;
             std::vector<std::pair<std::uint32_t , std::uint32_t >> parentItemPairVec;
 
+            std::unordered_map<std::uint32_t , std::uint32_t > parentItemCountMap;
+
+
+
+
             //get all parents and their items
 
             int i = 0;
@@ -137,12 +143,12 @@ namespace oscar_web {
                 const auto &cellParents = sg.cellParents(it.cellId());
                 if (!cellParents.empty()) {
                     for (const uint32_t &cellParent : cellParents) {
-                        for (const uint32_t &x : it.idx()) {
-                            parentItemMap[cellParent].emplace_back(x);
-                        }
+                        parentItemCountMap[cellParent]+=it.idxSize();
                     }
                 }
             }
+
+
             gtm.end();
 
             debugStr << ",\"timeToGenerateMap\":" << gtm.elapsedMilliSeconds();
@@ -154,9 +160,17 @@ namespace oscar_web {
 
             std::vector<std::pair<std::uint32_t, std::uint32_t >> parentItemVec;
 
-            sortMap(parentItemMap, parentItemVec, debugStr);
+            for(const auto &parentItemCountPair : parentItemCountMap){
+                parentItemVec.emplace_back(parentItemCountPair);
+            }
 
-            writeParentsWithNoIntersection(out, parentItemMap, parentItemVec, mode, store, numberOfRefinements, debugStr);
+            std::sort(parentItemVec.begin(), parentItemVec.end(), [](std::pair<std::uint32_t , std::uint32_t> const &a,
+                                                                     std::pair<std::uint32_t , std::uint32_t> const &b) {
+                return a.second != b.second ? a.second > b.second : a.first < b.first;
+            });
+
+            writeParentsWithNoIntersection(out, parentItemMap, parentItemVec, mode, store, numberOfRefinements, debugStr, subSet);
+
 
         }
 
@@ -207,17 +221,15 @@ namespace oscar_web {
     }
 
     //returns true if the number of intersections is greater than minNumber
-    bool KVClustering::hasIntersection(const std::vector<uint32_t> &set1, const std::vector<uint32_t> &set2,
-                                       const std::float_t &minNumber) {
+    template<typename It>
+    bool KVClustering::hasIntersection(It beginI, It endI, It beginJ, It endJ, const std::float_t &minNumber) {
         std::uint32_t intersectionCount = 0;
-        auto itSet1 = set1.begin();
-        auto itSet2 = set2.begin();
-        while (itSet1 != set1.end() && itSet2 != set2.end()) {
-            if (*itSet1 < *itSet2) ++itSet1;
-            else if (*itSet2 < *itSet1) ++itSet2;
+        while (beginI != endI && beginJ != endJ) {
+            if (*beginI < *beginJ) ++beginI;
+            else if (*beginJ < *beginI) ++beginJ;
             else {
-                ++itSet1;
-                ++itSet2;
+                ++beginI;
+                ++beginJ;
                 if (++intersectionCount > minNumber) {
                     return true;
                 };
@@ -234,12 +246,15 @@ namespace oscar_web {
                                                       const std::uint8_t &mode,
                                                       const liboscar::Static::OsmKeyValueObjectStore &store,
                                                       const uint32_t &numberOfRefinements,
-                                                      std::stringstream &debugStr) {
+                                                      std::stringstream &debugStr,
+                                                      sserialize::Static::spatial::detail::SubSet subSet) {
 
 
         //derive startParents BA-Kopf Page 18
         sserialize::TimeMeasurer fptm;
         fptm.begin();
+
+
 
         std::vector<std::pair<mapKey , std::uint32_t >> result;
         auto itI = parentItemVec.begin() + 1;
@@ -247,10 +262,12 @@ namespace oscar_web {
         std::float_t maxNumberOfIntersections;
         for (; itI < parentItemVec.end(); ++itI) {
             for (auto itJ = parentItemVec.begin(); itJ < itI; ++itJ) {
-                const std::vector<uint32_t> &setI = parentItemMap.at((*itI).first);
-                const std::vector<uint32_t> &setJ = parentItemMap.at((*itJ).first);
-                maxNumberOfIntersections = mode == 3 ? 0 : ((*itI).second + (*itJ).second) / 200;
-                if (!hasIntersection(setI, setJ, maxNumberOfIntersections)) {
+                const std::vector<uint32_t> &setI = getSet(((*itI).first), parentItemMap, subSet, mode);
+                const std::vector<uint32_t> &setJ = getSet(((*itJ).first), parentItemMap, subSet, mode);
+
+                maxNumberOfIntersections =
+                        mode == 2 ? 0 : (setI.size() + setJ.size()) / 200;
+                if (!hasIntersection(setI.begin(), setI.end(), setJ.begin(), setJ.end(), maxNumberOfIntersections)) {
                     // no intersection or required amount
                     // add both parents to results
                     result.emplace_back((*itJ).first,(*itJ).second);
@@ -276,8 +293,11 @@ namespace oscar_web {
                 bool discarded = false;
                 for (auto& parentPair : result) {
                     maxNumberOfIntersections =
-                            mode == 3 ? 0 : (parentPair.second + (*itK).second) / 200;
-                    if (hasIntersection(parentItemMap.at((*itK).first), parentItemMap.at(parentPair.first), maxNumberOfIntersections)) {
+                            mode == 2 ? 0 : (parentPair.second + (*itK).second) / 200;
+                    const std::vector<uint32_t> &setI = getSet((*itK).first, parentItemMap, subSet, mode);
+                    const std::vector<uint32_t> &setJ = getSet(parentPair.first, parentItemMap, subSet, mode);
+
+                    if (hasIntersection(setI.begin(), setI.end(), setJ.begin(), setJ.end(), maxNumberOfIntersections)) {
                         discarded = true;
                         break;
                     }
@@ -404,4 +424,23 @@ namespace oscar_web {
         }
         return false;
     }
+
+    std::vector<uint32_t> KVClustering::getSet(const std::pair<std::uint32_t, std::uint32_t> &id,
+                                               const std::unordered_map<std::pair<std::uint32_t, std::uint32_t>, std::vector<uint32_t>> &map,
+                                               const sserialize::Static::spatial::detail::SubSet &subSet,
+                                               const uint8_t &mode) {
+        return map.at(id);
+    }
+
+    std::vector<uint32_t>
+    KVClustering::getSet(const uint32_t &id, const std::unordered_map<uint32_t, std::vector<uint32_t >> &map,const sserialize::Static::spatial::detail::SubSet &subSet, const uint8_t &mode) {
+        if(mode < 2){
+            return map.at(id);
+        } else {
+            const auto &gh = m_store.geoHierarchy();
+            return subSet.regionByStoreId(gh.ghIdToStoreId(id))->cellPositions();
+        }
+    }
+
+
 }//end namespace oscar_web

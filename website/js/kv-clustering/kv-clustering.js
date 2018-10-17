@@ -2,7 +2,7 @@ define(["require", "state", "jquery", "search", "tools"],
     function (require, state, $, search, tools) {
         var kvClustering = {
             numberOfAdditionalRefinements : 5,
-            defaultExceptionProfile: '["wheelchair", "addr", "level"]',
+            defaultExceptionProfile: '["wheelchair", "addr", "level", "toilets:wheelchair"]',
             closeClustering: function(queryWithoutRefinements, clearExceptions, clearRefinements){
                 if(clearRefinements){
                     state.clustering.activeIncludingRefinements = [];
@@ -321,17 +321,27 @@ define(["require", "state", "jquery", "search", "tools"],
             },
             drawActiveRefinements: function() {
                 const refinements = $('#refinements');
+                const refinementText = $('#refinementsText');
                 refinements.empty();
+                let added = false;
                 state.clustering.activeIncludingRefinements.forEach(function (refinementName){
+                    added = true;
                   const escapedName = refinementName;
                   refinementName = unescape(refinementName);
                   refinements.append(`<span class="badge" style="background-color: green""><span class="active-refinement" style="cursor: pointer" id=${escapedName} >x</span> ${refinementName}</span>`);
                 });
                 state.clustering.activeExcludingRefinements.forEach(function (refinementName){
+                    added = true;
                   const escapedName = refinementName;
                   refinementName = unescape(refinementName);
                   refinements.append(`<span class="badge" style="background-color: red"><span class="active-refinement" style="cursor: pointer" id=${escapedName} >x</span> ${refinementName}</span>`);
                 });
+                if(added){
+                    refinementText.show();
+                } else {
+                    refinementText.hide();
+                }
+
             },
             addKException: function(refinement){
                 state.clustering.kExceptions.insert(parseInt(refinement), state.clustering.kRefinements.at(parseInt(refinement)));
@@ -456,11 +466,16 @@ define(["require", "state", "jquery", "search", "tools"],
                                 <li>Time to generate map: ${debugInfo.timeToGenerateMap} ms</li>
                                 <li>Time to sort: ${debugInfo.timeToSort} ms</li>
                                 <li>Time to find first parents: ${debugInfo.timeToFindFirstParents} ms</li>
+                                <li>Time to find first parents: ${debugInfo.timeToFindFirstParents} ms</li>
                                 <li>Time to find other parents: ${debugInfo.timeToFindOtherParents} ms</li>
                                 <li>Total time: ${debugInfo.totalTime} ms</li>
                            </ul>`;
               return state.clustering.debug ? debugHtml : "";
             },
+            clearRefinements: function () {
+                kvClustering.closeClustering($("#search_text").val(), false, true)
+                kvClustering.drawActiveRefinements();
+            }
         };
         return kvClustering;
     });
