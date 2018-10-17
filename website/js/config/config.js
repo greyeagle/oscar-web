@@ -132,14 +132,6 @@ define([], function() {
         geoquery: {
             samplecount: 10
         },
-        functionality: {
-            shapes: {
-                "highlightListItemOnClick": {
-                    "items": true,
-                    "relatives": false
-                }
-            }
-        },
         timeouts: {
             query: 0,
             loadingSpinner: 1000,
@@ -168,9 +160,13 @@ define([], function() {
 				showItemMarkers: true,
 				regionTabs: false
 			},
+			relativesList: {
+				showShapes: false
+			},
 			clustering : {
 				//minimum number of items in root node to have a clustered view
-				threshold: 100
+				threshold: 100,
+				maxZoomLevel: 17
 			},
 			apikeys: {
 				//api keys are public anyway. This should at least help against stupid github crawlers
